@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:open_filex/open_filex.dart';
 import '../utils/file_reconstructor.dart';
 
 class QRImportScreen extends StatefulWidget {
@@ -98,6 +99,17 @@ class _QRImportScreenState extends State<QRImportScreen> {
             ),
           ),
         );
+        
+        // Open the file automatically
+        try {
+          await OpenFilex.open(file.path);
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Could not open file: $e')),
+            );
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
