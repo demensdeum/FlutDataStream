@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
@@ -17,8 +18,71 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   String? _fileName;
   bool _isLoading = false;
   int _currentIndex = 0;
+  Timer? _autoSwitchTimer;
+  bool _isAutoSwitching = false;
+  Duration _switchInterval = const Duration(milliseconds: 1000); // Default 1 second
+
+  @override
+  void dispose() {
+    _autoSwitchTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startAutoSwitch() {
+    if (_qrDataBlocks.isEmpty) return;
+    
+    _autoSwitchTimer?.cancel();
+    _autoSwitchTimer = Timer.periodic(_switchInterval, (timer) {
+      if (mounted) {
+        setState(() {
+          _currentIndex = (_currentIndex + 1) % _qrDataBlocks.length;
+        });
+      }
+    });
+    setState(() {
+      _isAutoSwitching = true;
+    });
+  }
+
+  void _stopAutoSwitch() {
+    _autoSwitchTimer?.cancel();
+    setState(() {
+      _isAutoSwitching = false;
+    });
+  }
+
+  void _toggleAutoSwitch() {
+    if (_isAutoSwitching) {
+      _stopAutoSwitch();
+    } else {
+      _startAutoSwitch();
+    }
+  }
+
+  Future<void> _showIntervalDialog() async {
+    double intervalMs = _switchInterval.inMilliseconds.toDouble();
+    
+    final result = await showDialog<double>(
+      context: context,
+      builder: (context) => _IntervalDialog(initialValue: intervalMs),
+    );
+
+    if (result != null) {
+      final wasRunning = _isAutoSwitching;
+      _stopAutoSwitch();
+      
+      setState(() {
+        _switchInterval = Duration(milliseconds: result.round());
+      });
+
+      if (wasRunning) {
+        _startAutoSwitch();
+      }
+    }
+  }
 
   Future<void> _pickFile() async {
+    _stopAutoSwitch();
     setState(() {
       _isLoading = true;
     });
@@ -169,47 +233,186 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
                     // Navigation buttons
                     Container(
                       padding: const EdgeInsets.all(16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      child: Column(
                         children: [
-                          ElevatedButton.icon(
-                            onPressed: _currentIndex > 0
-                                ? () {
-                                    setState(() {
-                                      _currentIndex--;
-                                    });
-                                  }
-                                : null,
-                            icon: const Icon(Icons.arrow_back),
-                            label: const Text('Previous'),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: _currentIndex > 0
+                                    ? () {
+                                        _stopAutoSwitch();
+                                        setState(() {
+                                          _currentIndex--;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.arrow_back),
+                                label: const Text('Previous'),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: () {
+                                  _stopAutoSwitch();
+                                  setState(() {
+                                    _qrDataBlocks = [];
+                                    _currentIndex = 0;
+                                    _fileName = null;
+                                  });
+                                },
+                                icon: const Icon(Icons.refresh),
+                                label: const Text('New File'),
+                              ),
+                              ElevatedButton.icon(
+                                onPressed: _currentIndex < _qrDataBlocks.length - 1
+                                    ? () {
+                                        _stopAutoSwitch();
+                                        setState(() {
+                                          _currentIndex++;
+                                        });
+                                      }
+                                    : null,
+                                icon: const Icon(Icons.arrow_forward),
+                                label: const Text('Next'),
+                              ),
+                            ],
                           ),
-                          ElevatedButton.icon(
-                            onPressed: () {
-                              setState(() {
-                                _qrDataBlocks = [];
-                                _currentIndex = 0;
-                                _fileName = null;
-                              });
-                            },
-                            icon: const Icon(Icons.refresh),
-                            label: const Text('New File'),
-                          ),
-                          ElevatedButton.icon(
-                            onPressed: _currentIndex < _qrDataBlocks.length - 1
-                                ? () {
-                                    setState(() {
-                                      _currentIndex++;
-                                    });
-                                  }
-                                : null,
-                            icon: const Icon(Icons.arrow_forward),
-                            label: const Text('Next'),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              ElevatedButton.icon(
+                                onPressed: _toggleAutoSwitch,
+                                icon: Icon(_isAutoSwitching ? Icons.pause : Icons.play_arrow),
+                                label: Text(_isAutoSwitching ? 'Pause' : 'Auto Switch'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isAutoSwitching
+                                      ? Colors.orange
+                                      : Colors.green,
+                                  foregroundColor: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              OutlinedButton.icon(
+                                onPressed: _showIntervalDialog,
+                                icon: const Icon(Icons.timer),
+                                label: Text(
+                                  '${_switchInterval.inMilliseconds}ms',
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
+    );
+  }
+}
+
+class _IntervalDialog extends StatefulWidget {
+  final double initialValue;
+
+  const _IntervalDialog({required this.initialValue});
+
+  @override
+  State<_IntervalDialog> createState() => _IntervalDialogState();
+}
+
+class _IntervalDialogState extends State<_IntervalDialog> {
+  late double _intervalMs;
+  late TextEditingController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _intervalMs = widget.initialValue.clamp(0.01, 2000.0);
+    _textController = TextEditingController(text: _intervalMs.toStringAsFixed(2));
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _updateFromSlider(double value) {
+    setState(() {
+      _intervalMs = value;
+      _textController.text = value.toStringAsFixed(2);
+    });
+  }
+
+  void _updateFromText(String text) {
+    final value = double.tryParse(text);
+    if (value != null) {
+      final clamped = value.clamp(0.01, 2000.0);
+      setState(() {
+        _intervalMs = clamped;
+        _textController.text = clamped.toStringAsFixed(2);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Set Switch Interval'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _textController,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              labelText: 'Interval (ms)',
+              hintText: '0.01 - 2000',
+              border: OutlineInputBorder(),
+            ),
+            onChanged: _updateFromText,
+          ),
+          const SizedBox(height: 16),
+          Slider(
+            value: _intervalMs,
+            min: 0.01,
+            max: 2000.0,
+            divisions: 1999, // Fine-grained control
+            label: '${_intervalMs.toStringAsFixed(2)} ms',
+            onChanged: _updateFromSlider,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '0.01 ms',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              Text(
+                '2000 ms (2s)',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(context).pop(_intervalMs),
+          child: const Text('OK'),
+        ),
+      ],
     );
   }
 }
