@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import '../utils/file_chunker.dart';
+import '../utils/settings_service.dart';
 
 class QRDisplayScreen extends StatefulWidget {
   const QRDisplayScreen({super.key});
@@ -21,11 +22,25 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   Timer? _autoSwitchTimer;
   bool _isAutoSwitching = false;
   Duration _switchInterval = const Duration(milliseconds: 1000); // Default 1 second
+  int _chunkSize = 2000; // Default chunk size
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSettings();
+  }
 
   @override
   void dispose() {
     _autoSwitchTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadSettings() async {
+    final chunkSize = await SettingsService.getChunkSize();
+    setState(() {
+      _chunkSize = chunkSize;
+    });
   }
 
   void _startAutoSwitch() {
@@ -81,6 +96,41 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
     }
   }
 
+  Future<void> _showSettingsDialog() async {
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => _ChunkSizeDialog(initialValue: _chunkSize),
+    );
+
+    if (result != null && result != _chunkSize) {
+      final success = await SettingsService.setChunkSize(result);
+      if (success) {
+        setState(() {
+          _chunkSize = result;
+        });
+        
+        // If there are existing blocks, warn user they need to regenerate
+        if (_qrDataBlocks.isNotEmpty && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Chunk size updated. Select a new file to apply the change.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Invalid chunk size. Must be between 100 and 2048 bytes.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _pickFile() async {
     _stopAutoSwitch();
     setState(() {
@@ -99,7 +149,7 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
         final bytes = await file.readAsBytes();
 
         // Generate QR code blocks
-        final blocks = FileChunker.generateQRBlocks(bytes, _fileName!);
+        final blocks = FileChunker.generateQRBlocks(bytes, _fileName!, chunkSize: _chunkSize);
 
         setState(() {
           _qrDataBlocks = blocks;
@@ -129,6 +179,13 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: const Text('FlutDataStream'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: _showSettingsDialog,
+            tooltip: 'Settings',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -307,6 +364,123 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
                     ),
                   ],
                 ),
+    );
+  }
+}
+
+class _ChunkSizeDialog extends StatefulWidget {
+  final int initialValue;
+
+  const _ChunkSizeDialog({required this.initialValue});
+
+  @override
+  State<_ChunkSizeDialog> createState() => _ChunkSizeDialogState();
+}
+
+class _ChunkSizeDialogState extends State<_ChunkSizeDialog> {
+  late int _chunkSize;
+  late TextEditingController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _chunkSize = widget.initialValue.clamp(
+      SettingsService.minChunkSize,
+      SettingsService.maxChunkSize,
+    );
+    _textController = TextEditingController(text: _chunkSize.toString());
+  }
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _updateFromSlider(double value) {
+    setState(() {
+      _chunkSize = value.round();
+      _textController.text = _chunkSize.toString();
+    });
+  }
+
+  void _updateFromText(String text) {
+    final value = int.tryParse(text);
+    if (value != null) {
+      final clamped = value.clamp(
+        SettingsService.minChunkSize,
+        SettingsService.maxChunkSize,
+      );
+      setState(() {
+        _chunkSize = clamped;
+        _textController.text = clamped.toString();
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Chunk Size Settings'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            'Set the data size for each QR code chunk. Larger chunks mean fewer QR codes but may be harder to scan.',
+            style: TextStyle(fontSize: 12),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _textController,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Chunk Size (bytes)',
+              hintText: '${SettingsService.minChunkSize} - ${SettingsService.maxChunkSize}',
+              border: const OutlineInputBorder(),
+            ),
+            onChanged: _updateFromText,
+          ),
+          const SizedBox(height: 16),
+          Slider(
+            value: _chunkSize.toDouble(),
+            min: SettingsService.minChunkSize.toDouble(),
+            max: SettingsService.maxChunkSize.toDouble(),
+            divisions: (SettingsService.maxChunkSize - SettingsService.minChunkSize) ~/ 8, // ~8 byte steps
+            label: '$_chunkSize bytes',
+            onChanged: _updateFromSlider,
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '${SettingsService.minChunkSize} bytes',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              Text(
+                '${SettingsService.maxChunkSize} bytes (max)',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Navigator.of(context).pop(_chunkSize),
+          child: const Text('OK'),
+        ),
+      ],
     );
   }
 }

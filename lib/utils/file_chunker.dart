@@ -4,26 +4,36 @@ import 'dart:convert';
 class FileChunker {
   // Maximum data size per QR code (considering QR code capacity)
   // Using version 40 (177x177) which can hold ~2953 bytes in binary mode
-  // We'll use a conservative 2000 bytes per block to ensure reliability
-  static const int maxDataSizePerBlock = 2000;
+  // Default is 2000 bytes per block to ensure reliability
   static const int maxHeaderSize = 2000;
 
   /// Generates QR code blocks from file bytes
   /// Returns a list of strings where:
   /// - First element is the header block starting with "FlutDataStreamHeaderBlock"
   /// - Subsequent elements are data blocks starting with "FlutDataStreamBlock[number]"
-  static List<String> generateQRBlocks(Uint8List fileBytes, String fileName) {
+  /// 
+  /// [chunkSize] - Size of each data chunk in bytes (default: 2000, max: 2048)
+  static List<String> generateQRBlocks(
+    Uint8List fileBytes,
+    String fileName, {
+    int chunkSize = 2000,
+  }) {
+    // Validate chunk size
+    if (chunkSize < 100 || chunkSize > 2048) {
+      throw Exception('Chunk size must be between 100 and 2048 bytes');
+    }
+
     final List<String> blocks = [];
 
     // Calculate number of data blocks needed
-    final int totalDataBlocks = (fileBytes.length / maxDataSizePerBlock).ceil();
+    final int totalDataBlocks = (fileBytes.length / chunkSize).ceil();
 
     // Create header block
     final headerData = {
       'fileName': fileName,
       'fileSize': fileBytes.length,
       'totalBlocks': totalDataBlocks,
-      'blockSize': maxDataSizePerBlock,
+      'blockSize': chunkSize,
     };
 
     final headerJson = jsonEncode(headerData);
@@ -38,9 +48,9 @@ class FileChunker {
 
     // Create data blocks
     for (int i = 0; i < totalDataBlocks; i++) {
-      final startIndex = i * maxDataSizePerBlock;
-      final endIndex = (startIndex + maxDataSizePerBlock < fileBytes.length)
-          ? startIndex + maxDataSizePerBlock
+      final startIndex = i * chunkSize;
+      final endIndex = (startIndex + chunkSize < fileBytes.length)
+          ? startIndex + chunkSize
           : fileBytes.length;
 
       final chunk = fileBytes.sublist(startIndex, endIndex);
