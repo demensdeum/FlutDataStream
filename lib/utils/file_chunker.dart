@@ -12,11 +12,11 @@ class FileChunker {
   /// - First element is the header block starting with "FlutDataStreamHeaderBlock"
   /// - Subsequent elements are data blocks starting with "FlutDataStreamBlock[number]"
   /// 
-  /// [chunkSize] - Size of each data chunk in bytes (default: 2000, max: 2048)
+  /// [chunkSize] - Size of each data chunk in bytes (default: 256, max: 2048)
   static List<String> generateQRBlocks(
     Uint8List fileBytes,
     String fileName, {
-    int chunkSize = 2000,
+    int chunkSize = 256,
   }) {
     // Validate chunk size
     if (chunkSize < 100 || chunkSize > 2048) {
