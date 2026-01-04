@@ -37,7 +37,7 @@ class FileChunker {
     };
 
     final headerJson = jsonEncode(headerData);
-    final headerBlock = 'FlutDataStreamHeaderBlock$headerJson';
+    final headerBlock = 'FlutDataStreamHeaderBlock|$headerJson';
     
     // Verify header fits in QR code capacity
     if (headerBlock.length > maxHeaderSize) {
@@ -58,9 +58,9 @@ class FileChunker {
       // Encode chunk as base64 to ensure safe transmission in QR code
       final base64Chunk = base64Encode(chunk);
       
-      // Format: FlutDataStreamBlock[number]base64data
+      // Format: FlutDataStreamBlock|[number]|[base64data]
       final blockNumber = i + 1; // Blocks are numbered starting from 1
-      final dataBlock = 'FlutDataStreamBlock$blockNumber$base64Chunk';
+      final dataBlock = 'FlutDataStreamBlock|$blockNumber|$base64Chunk';
       
       blocks.add(dataBlock);
     }

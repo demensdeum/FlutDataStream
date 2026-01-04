@@ -5,9 +5,9 @@ class FileReconstructor {
   /// Parses a QR code string and extracts header or data block information
   /// Returns a map with 'type' ('header' or 'data'), and relevant data
   static Map<String, dynamic>? parseQRCode(String qrData) {
-    if (qrData.startsWith('FlutDataStreamHeaderBlock')) {
+    if (qrData.startsWith('FlutDataStreamHeaderBlock|')) {
       // Extract header JSON
-      final jsonStr = qrData.substring('FlutDataStreamHeaderBlock'.length);
+      final jsonStr = qrData.substring('FlutDataStreamHeaderBlock|'.length);
       try {
         final headerData = jsonDecode(jsonStr) as Map<String, dynamic>;
         return {
@@ -20,26 +20,16 @@ class FileReconstructor {
       } catch (e) {
         return null;
       }
-    } else if (qrData.startsWith('FlutDataStreamBlock')) {
+    } else if (qrData.startsWith('FlutDataStreamBlock|')) {
       // Extract block number and data
-      // Format: FlutDataStreamBlock[number][base64data]
-      final remaining = qrData.substring('FlutDataStreamBlock'.length);
-      
-      // Find where the number ends (first non-digit character)
-      int blockNumberEnd = 0;
-      for (int i = 0; i < remaining.length; i++) {
-        if (!RegExp(r'[0-9]').hasMatch(remaining[i])) {
-          blockNumberEnd = i;
-          break;
-        }
-      }
-      
-      if (blockNumberEnd == 0) return null;
-      
-      final blockNumber = int.tryParse(remaining.substring(0, blockNumberEnd));
+      // Format: FlutDataStreamBlock|[number]|[base64data]
+      final parts = qrData.split('|');
+      if (parts.length < 3) return null;
+
+      final blockNumber = int.tryParse(parts[1]);
       if (blockNumber == null) return null;
       
-      final base64Data = remaining.substring(blockNumberEnd);
+      final base64Data = parts[2];
       
       try {
         final bytes = base64Decode(base64Data);
