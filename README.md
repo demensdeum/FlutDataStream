@@ -1,6 +1,6 @@
 # FlutDataStream
 
-![](demo.mp4)
+<video src="https://github.com/demensdeum/FlutDataStream/raw/refs/heads/main/demo.mp4"></video>
 
 A Flutter application that converts any file into a series of machine-readable codes (QR & DataMatrix) for high-speed data streaming between devices.
 
