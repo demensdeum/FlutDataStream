@@ -19,8 +19,8 @@ class FileChunker {
     int chunkSize = 256,
   }) {
     // Validate chunk size
-    if (chunkSize < 100 || chunkSize > 2048) {
-      throw Exception('Chunk size must be between 100 and 2048 bytes');
+    if (chunkSize < 32 || chunkSize > 2048) {
+      throw Exception('Chunk size must be between 32 and 2048 bytes');
     }
 
     final List<String> blocks = [];

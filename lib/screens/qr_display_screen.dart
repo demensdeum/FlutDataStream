@@ -121,8 +121,8 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Invalid chunk size. Must be between 100 and 2048 bytes.'),
+            SnackBar(
+              content: Text('Invalid chunk size. Must be between ${SettingsService.minChunkSize} and ${SettingsService.maxChunkSize} bytes.'),
               backgroundColor: Colors.red,
             ),
           );

@@ -4,7 +4,7 @@ class SettingsService {
   static const String _chunkSizeKey = 'chunk_size';
   static const int _defaultChunkSize = 256;
   static const int _maxChunkSize = 2048;
-  static const int _minChunkSize = 100;
+  static const int _minChunkSize = 32;
 
   /// Get the current chunk size setting
   static Future<int> getChunkSize() async {
