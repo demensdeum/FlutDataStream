@@ -327,7 +327,7 @@ class _IntervalDialogState extends State<_IntervalDialog> {
   @override
   void initState() {
     super.initState();
-    _intervalMs = widget.initialValue.clamp(0.01, 2000.0);
+    _intervalMs = widget.initialValue.clamp(10.0, 5000.0);
     _textController = TextEditingController(text: _intervalMs.toStringAsFixed(2));
   }
 
@@ -347,7 +347,7 @@ class _IntervalDialogState extends State<_IntervalDialog> {
   void _updateFromText(String text) {
     final value = double.tryParse(text);
     if (value != null) {
-      final clamped = value.clamp(0.01, 2000.0);
+      final clamped = value.clamp(10.0, 5000.0);
       setState(() {
         _intervalMs = clamped;
         _textController.text = clamped.toStringAsFixed(2);
@@ -367,7 +367,7 @@ class _IntervalDialogState extends State<_IntervalDialog> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             decoration: const InputDecoration(
               labelText: 'Interval (ms)',
-              hintText: '0.01 - 2000',
+              hintText: '10 - 5000',
               border: OutlineInputBorder(),
             ),
             onChanged: _updateFromText,
@@ -375,10 +375,10 @@ class _IntervalDialogState extends State<_IntervalDialog> {
           const SizedBox(height: 16),
           Slider(
             value: _intervalMs,
-            min: 0.01,
-            max: 2000.0,
-            divisions: 1999, // Fine-grained control
-            label: '${_intervalMs.toStringAsFixed(2)} ms',
+            min: 10.0,
+            max: 5000.0,
+            divisions: 499, // 10ms steps
+            label: '${_intervalMs.toStringAsFixed(0)} ms',
             onChanged: _updateFromSlider,
           ),
           const SizedBox(height: 8),
@@ -386,14 +386,14 @@ class _IntervalDialogState extends State<_IntervalDialog> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '0.01 ms',
+                '10 ms',
                 style: TextStyle(
                   fontSize: 12,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
               Text(
-                '2000 ms (2s)',
+                '5000 ms (5s)',
                 style: TextStyle(
                   fontSize: 12,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
