@@ -21,6 +21,7 @@ class _QRImportScreenState extends State<QRImportScreen> {
   bool _isReconstructing = false;
   Set<String> _scannedCodes = {}; // Track scanned codes to avoid duplicates
   String? _lastScannedBlock; // Track last successfully scanned block
+  String? _currentRawValue; // Track currently visible raw QR value
 
   @override
   void dispose() {
@@ -111,6 +112,12 @@ class _QRImportScreenState extends State<QRImportScreen> {
   }
 
   void _processQRCode(String? code) {
+    if (code != _currentRawValue) {
+      setState(() {
+        _currentRawValue = code;
+      });
+    }
+
     if (code == null || _scannedCodes.contains(code)) {
       return; // Skip null or already scanned codes
     }
@@ -200,6 +207,7 @@ class _QRImportScreenState extends State<QRImportScreen> {
       _isScanning = true;
       _isReconstructing = false;
       _lastScannedBlock = null;
+      _currentRawValue = null;
     });
   }
 
@@ -315,6 +323,47 @@ class _QRImportScreenState extends State<QRImportScreen> {
                               }
                             },
                           ),
+                          // Verbose raw readout overlay
+                          if (_currentRawValue != null)
+                            Positioned(
+                              top: 20,
+                              left: 20,
+                              right: 20,
+                              child: Container(
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.6),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(color: Colors.white24),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Text(
+                                      'SCANNER READOUT (ASCII):',
+                                      style: TextStyle(
+                                        color: Colors.greenAccent,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      _currentRawValue!.length > 100
+                                          ? '${_currentRawValue!.substring(0, 100)}...'
+                                          : _currentRawValue!,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontFamily: 'monospace',
+                                        fontSize: 12,
+                                      ),
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           // Overlay with instructions
                           Positioned(
                             bottom: 0,
