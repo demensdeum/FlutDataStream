@@ -20,6 +20,7 @@ class _QRImportScreenState extends State<QRImportScreen> {
   bool _isScanning = true;
   bool _isReconstructing = false;
   Set<String> _scannedCodes = {}; // Track scanned codes to avoid duplicates
+  String? _lastScannedBlock; // Track last successfully scanned block
 
   @override
   void dispose() {
@@ -127,9 +128,12 @@ class _QRImportScreenState extends State<QRImportScreen> {
         _dataBlocks.clear(); // Reset data blocks when new header is scanned
         _scannedCodes.clear(); // Reset scanned codes
         _scannedCodes.add(code); // Keep the header in scanned codes
+        _lastScannedBlock = 'Header Block';
       } else if (parsed['type'] == 'data') {
         if (_header != null) {
-          _dataBlocks[parsed['blockNumber'] as int] = parsed['data'] as Uint8List;
+          final blockNumber = parsed['blockNumber'] as int;
+          _dataBlocks[blockNumber] = parsed['data'] as Uint8List;
+          _lastScannedBlock = 'Data Block $blockNumber';
         }
       }
     });
@@ -195,6 +199,7 @@ class _QRImportScreenState extends State<QRImportScreen> {
       _scannedCodes.clear();
       _isScanning = true;
       _isReconstructing = false;
+      _lastScannedBlock = null;
     });
   }
 
@@ -244,6 +249,35 @@ class _QRImportScreenState extends State<QRImportScreen> {
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
+                  if (_lastScannedBlock != null) ...[
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle,
+                            size: 16,
+                            color: Theme.of(context).colorScheme.onPrimaryContainer,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Last scanned: $_lastScannedBlock',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   if (_header != null && _dataBlocks.length < (_header!['totalBlocks'] as int))
                     const SizedBox(height: 8),
                   if (_header != null && _dataBlocks.length < (_header!['totalBlocks'] as int))
