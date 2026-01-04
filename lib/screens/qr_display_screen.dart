@@ -21,8 +21,8 @@ class _QRDisplayScreenState extends State<QRDisplayScreen> {
   int _currentIndex = 0;
   Timer? _autoSwitchTimer;
   bool _isAutoSwitching = false;
-  Duration _switchInterval = const Duration(milliseconds: 1000); // Default 1 second
-  int _chunkSize = 256; // Default chunk size
+  Duration _switchInterval = const Duration(milliseconds: 330); // Default 330 ms
+  int _chunkSize = 512; // Default chunk size
 
   @override
   void initState() {

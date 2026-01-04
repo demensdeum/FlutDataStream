@@ -65,3 +65,8 @@ FlutDataStreamBlock2[base64 encoded data]
 - Linux
 - Web
 
+## Inspired by Projects
+
+https://github.com/divan/txqr
+https://github.com/digitalbazaar/qram
+https://github.com/dridk/qrfontain

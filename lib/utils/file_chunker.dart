@@ -16,7 +16,7 @@ class FileChunker {
   static List<String> generateQRBlocks(
     Uint8List fileBytes,
     String fileName, {
-    int chunkSize = 256,
+    int chunkSize = 512,
   }) {
     // Validate chunk size
     if (chunkSize < 32 || chunkSize > 2048) {
